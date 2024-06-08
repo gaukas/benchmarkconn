@@ -50,6 +50,10 @@ type CombinedCounter struct {
 }
 
 func CombineCounters(interval time.Duration, counters ...Counter) *CombinedCounter {
+	if len(counters) == 0 {
+		return nil
+	}
+
 	report := make([]CounterReport, len(counters))
 	for i := range report {
 		report[i] = NewCounterReport()
