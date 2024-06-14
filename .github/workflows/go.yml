@@ -9,17 +9,19 @@ on:
   pull_request:
     branches: [ "master" ]
 
-jobs:
+env:
+  go_version: '1.22.x'
 
+jobs:
   build:
     runs-on: ubuntu-latest
     steps:
     - uses: actions/checkout@v4
 
     - name: Set up Go
-      uses: actions/setup-go@v4
+      uses: actions/setup-go@v5
       with:
-        go-version: '1.22.x'
+        go-version: ${{ env.go_version }}
 
     - name: Build
       run: go build -v ./...
