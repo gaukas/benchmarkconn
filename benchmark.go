@@ -311,6 +311,8 @@ func (b *IntervalBenchmark) Writer(conn net.Conn, counters ...Counter) error {
 		if err != nil {
 			return err
 		}
+
+		b.successfulWrites.Add(1)
 	}
 	b.ticker.Stop()
 
