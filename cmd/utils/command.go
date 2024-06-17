@@ -233,6 +233,11 @@ func (b *Benchmark) pressuredBenchmarkServer(write bool) {
 		return
 	}
 
+	// if TCPConn, set the NoDelay option
+	if tcpConn, ok := c.(*net.TCPConn); ok {
+		tcpConn.SetNoDelay(true)
+	}
+
 	wg := new(sync.WaitGroup)
 	wg.Add(1)
 	go func() {
@@ -277,6 +282,11 @@ func (b *Benchmark) echoBenchmarkServer(write bool) {
 	if err != nil {
 		slog.Error(fmt.Sprintf("failed to accept connection: %v\n", err))
 		return
+	}
+
+	// if TCPConn, set the NoDelay option
+	if tcpConn, ok := c.(*net.TCPConn); ok {
+		tcpConn.SetNoDelay(true)
 	}
 
 	wg := new(sync.WaitGroup)
