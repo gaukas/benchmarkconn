@@ -147,7 +147,8 @@ func (b *PressuredBenchmark) Reader(conn net.Conn, counters ...Counter) error {
 
 	var receivedMsg = make([]byte, b.messageSize)
 	for b.successfulReads.Load() < b.TotalMessages {
-		_, err := conn.Read(receivedMsg)
+		// _, err := conn.Read(receivedMsg) // risk reading partial messages
+		_, err := io.ReadFull(conn, receivedMsg) // read full length of the message
 		if err != nil {
 			if errors.Is(err, io.EOF) || errors.Is(err, net.ErrClosed) {
 				return nil
@@ -274,7 +275,8 @@ func (b *IntervalBenchmark) Writer(conn net.Conn, counters ...Counter) error {
 			var receivedMsg = make([]byte, b.messageSize)
 			for {
 				conn.SetReadDeadline(time.Now().Add(1 * time.Second).Add(b.Interval)) // set a deadline for reading echoed messages
-				n, err := conn.Read(receivedMsg)
+				// n, err := conn.Read(receivedMsg) // risk reading partial messages
+				n, err := io.ReadFull(conn, receivedMsg) // read full length of the message
 				if err != nil {
 					if errors.Is(err, os.ErrDeadlineExceeded) {
 						exitedDueToDeadline.Store(true)
@@ -299,7 +301,7 @@ func (b *IntervalBenchmark) Writer(conn net.Conn, counters ...Counter) error {
 	var i uint64
 	for i = 0; i < b.TotalMessages; i++ {
 		<-b.ticker.C // wait for the interval
-		var randMsg []byte = make([]byte, b.MessageSize)
+		var randMsg []byte = make([]byte, b.messageSize)
 		crand.Read(randMsg)
 
 		if b.Echo { // if echo is enabled, record the message to the echo map
@@ -311,6 +313,8 @@ func (b *IntervalBenchmark) Writer(conn net.Conn, counters ...Counter) error {
 		if err != nil {
 			return err
 		}
+
+		b.successfulWrites.Add(1)
 	}
 	b.ticker.Stop()
 
@@ -371,7 +375,8 @@ func (b *IntervalBenchmark) Reader(conn net.Conn, counters ...Counter) error {
 
 	var receivedMsg = make([]byte, b.messageSize)
 	for b.successfulReads.Load() < b.TotalMessages {
-		n, err := conn.Read(receivedMsg)
+		// n, err := conn.Read(receivedMsg) // risk reading partial messages
+		n, err := io.ReadFull(conn, receivedMsg) // read full length of the message
 		if err != nil {
 			if errors.Is(err, io.EOF) || errors.Is(err, net.ErrClosed) {
 				return nil
