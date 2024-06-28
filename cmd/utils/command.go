@@ -134,6 +134,35 @@ func (b *Benchmark) Server() error {
 	return nil
 }
 
+func (b *Benchmark) NetworkAddress() (string, string) {
+	return *b.network, b.addr
+}
+
+func (b *Benchmark) ServerWithListener(l net.Listener) error {
+	var writeBench bool
+	switch b.command {
+	case "write":
+		writeBench = true
+	case "read":
+		writeBench = false
+	default:
+		b.Usage()
+		return nil
+	}
+
+	switch b.benchType {
+	case "pressure":
+		b.pressuredBenchmarkServerWithListener(l, writeBench)
+	case "echo":
+		b.echoBenchmarkServerWithListener(l, writeBench)
+	default:
+		b.Usage()
+		return nil
+	}
+
+	return nil
+}
+
 func (b *Benchmark) pressuredBenchmarkClient(write bool) {
 	// dial the remote address
 	c, err := net.Dial(*b.network, b.addr)
@@ -154,9 +183,15 @@ func (b *Benchmark) pressuredBenchmarkClient(write bool) {
 		}
 
 		if write {
-			pb.Writer(c)
+			if err := pb.Writer(c); err != nil {
+				slog.Error(fmt.Sprintf("(*PressuredBenchmark).Writer: %v", err))
+				return
+			}
 		} else {
-			pb.Reader(c)
+			if err := pb.Reader(c); err != nil {
+				slog.Error(fmt.Sprintf("(*PressuredBenchmark).Reader: %v", err))
+				return
+			}
 		}
 
 		slog.Info(fmt.Sprintf("PressuredBenchmark Result: %v", pb.Result()))
@@ -226,6 +261,23 @@ func (b *Benchmark) pressuredBenchmarkServer(write bool) {
 
 	slog.Info(fmt.Sprintf("server started, listening on %s", l.Addr()))
 
+	b.pressuredBenchmarkServerWithListener(l, write)
+}
+
+func (b *Benchmark) echoBenchmarkServer(write bool) {
+	// listen on the specified address
+	l, err := net.Listen(*b.network, b.addr)
+	if err != nil {
+		slog.Error(fmt.Sprintf("failed to listen on %s: %v\n", b.addr, err))
+		return
+	}
+
+	slog.Info(fmt.Sprintf("server started, listening on %s", l.Addr()))
+
+	b.echoBenchmarkServerWithListener(l, write)
+}
+
+func (b *Benchmark) pressuredBenchmarkServerWithListener(l net.Listener, write bool) {
 	// accept only one connection and run the benchmark
 	c, err := l.Accept()
 	if err != nil {
@@ -250,9 +302,15 @@ func (b *Benchmark) pressuredBenchmarkServer(write bool) {
 		}
 
 		if write {
-			pb.Writer(c)
+			if err := pb.Writer(c); err != nil {
+				slog.Error(fmt.Sprintf("(*PressuredBenchmark).Writer: %v", err))
+				return
+			}
 		} else {
-			pb.Reader(c)
+			if err := pb.Reader(c); err != nil {
+				slog.Error(fmt.Sprintf("(*PressuredBenchmark).Reader: %v", err))
+				return
+			}
 		}
 
 		slog.Info(fmt.Sprintf("PressuredBenchmark Result: %v", pb.Result()))
@@ -267,16 +325,7 @@ func (b *Benchmark) pressuredBenchmarkServer(write bool) {
 	wg.Wait()
 }
 
-func (b *Benchmark) echoBenchmarkServer(write bool) {
-	// listen on the specified address
-	l, err := net.Listen(*b.network, b.addr)
-	if err != nil {
-		slog.Error(fmt.Sprintf("failed to listen on %s: %v\n", b.addr, err))
-		return
-	}
-
-	slog.Info(fmt.Sprintf("server started, listening on %s", l.Addr()))
-
+func (b *Benchmark) echoBenchmarkServerWithListener(l net.Listener, write bool) {
 	// accept only one connection and run the benchmark
 	c, err := l.Accept()
 	if err != nil {
